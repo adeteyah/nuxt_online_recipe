@@ -1,31 +1,31 @@
-# syntax = docker/dockerfile:1
+# Build Stage 1
 
-ARG NODE_VERSION=20.18.0
+FROM node:22-alpine AS build
+WORKDIR /app
 
-FROM node:${NODE_VERSION}-slim as base
+# Copy package.json and your lockfile, here we add pnpm-lock.yaml for illustration
+COPY package*.json ./
 
-ARG PORT=3000
+# Install dependencies
+RUN npm i
 
-WORKDIR /src
+# Copy the entire project
+COPY . ./
 
-# Build
-FROM base as build
-
-COPY --link package.json package-lock.json ./
-RUN npm install
-
-COPY --link . .
-
+# Build the project
 RUN npm run build
 
-# Run
-FROM base
+# Build Stage 2
 
-ENV PORT=$PORT
-ENV NODE_ENV=production
+FROM node:22-alpine
+WORKDIR /app
 
-COPY --from=build /src/.output /src/.output
-# Optional, only needed if you rely on unbundled dependencies
-# COPY --from=build /src/node_modules /src/node_modules
+# Only `.output` folder is needed from the build stage
+COPY --from=build /app/.output/ ./
 
-CMD [ "node", ".output/server/index.mjs" ]
+# Change the port and host
+ENV PORT=8080
+
+EXPOSE 8080
+
+CMD ["node", "/app/server/index.mjs"]
