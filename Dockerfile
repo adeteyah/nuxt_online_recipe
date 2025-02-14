@@ -1,31 +1,30 @@
-# Build Stage 1
-
+# Build Stage
 FROM node:22-alpine AS build
 WORKDIR /app
 
-# Copy package.json and your lockfile, here we add pnpm-lock.yaml for illustration
+# Copy package.json and lockfile first
 COPY package*.json ./
+RUN npm ci --production  # Install only necessary dependencies
 
-# Install dependencies
-RUN npm i
-
-# Copy the entire project
+# Copy the rest of the project files
 COPY . ./
 
 # Build the project
 RUN npm run build
 
-# Build Stage 2
-
+# Run Stage
 FROM node:22-alpine
 WORKDIR /app
 
-# Only `.output` folder is needed from the build stage
+# Copy only the build output
 COPY --from=build /app/.output/ ./
 
-# Change the port and host
+# Ensure correct environment variables
+ENV NITRO_HOST=0.0.0.0
+ENV NITRO_PORT=8080
 ENV PORT=8080
 
 EXPOSE 8080
 
-CMD ["node", "/app/server/index.mjs"]
+# Start Nuxt Nitro server
+CMD ["node", "./server/index.mjs"]
